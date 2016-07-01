@@ -1,4 +1,4 @@
-# Magma code to find generating vectors for group actions
+# Magma code to find generating vectors for groups acting on Riemann surfaces
 This repository will host Magma code used to determine generating vectors given a group and signature.
 
 The original GAP code this code is based on has the following copyright:
