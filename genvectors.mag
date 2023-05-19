@@ -17,9 +17,9 @@ ConvertToPerm(G)
 
 CardinalityOfHom(C, g0, tbl, classlengths, ordG)
 NonGenerationByScottCriterion(tbl, C, sizeconjclass, ordG)
-WeakTestGeneration(C, g0, G)
-HardTestGeneration(C, g0, G)
-RepresentativesEpimorphisms(signature, G : Con:=[], tbl:=[])
+WeakTestGeneration(C, g0, G : Con:=[], tbl:=[], sizeconjclass:=[], sizecenter:=0)
+HardTestGeneration(C, g0, G : Con:=[])
+RepresentativesEpimorphisms(signature, G : Con:=[], tbl:=[],  orders:=[], sizecon:=[], sizecenter:=0)
 
 Procedure:
 AddMonodromy(g)  
@@ -168,11 +168,15 @@ end function;
 
 
 /* ***************************************
-WeakTestGeneration(C, g0, G)
+WeakTestGeneration(C, g0, G : Con:=[], tbl:=[], sizeconjclass:=[], sizecenter:=0)
 
 Inputs:  C the class structure of G
          g0 the orbit genus
          G a finite group
+	 Con ConjugacyClasses(G) (optional)
+	 tbl CharacterTable(G) (optional)
+	 sizeconjclass list of orders of elements in each conjugacy class, based on order of Con
+	 size center #Center(G) (optional)
 
 Outputs: false if Epi_C(g,G) is empty based on
             Nongeneration criterion of Scott or
@@ -221,11 +225,12 @@ end function;
 
 
 /* ***************************************  
-HardTestGeneration(C, g0, G)
+HardTestGeneration(C, g0, G : Con:=[])
 
 Inputs:  C the class structure of G
          g0 the orbit genus
          G a finite group
+	 Con CojugacyClasses(G) (optional)
 
 
 Outputs: tup   which is a list of elements of G 
