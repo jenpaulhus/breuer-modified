@@ -1,6 +1,6 @@
 /* genvectors.mag
 
-Last Updated: May 10, 2016
+Last Updated: May 19, 2023
    
 These functions are primarily Magma versions of GAP programs
 written by Thomas Breuer.
@@ -19,7 +19,7 @@ CardinalityOfHom(C, g0, tbl, classlengths, ordG)
 NonGenerationByScottCriterion(tbl, C, sizeconjclass, ordG)
 WeakTestGeneration(C, g0, G)
 HardTestGeneration(C, g0, G)
-RepresentativesEpimorphisms(signature, G)
+RepresentativesEpimorphisms(signature, G : Con:=[], tbl:=[])
 
 Procedure:
 AddMonodromy(g)  
@@ -27,10 +27,9 @@ AddMonodromy(g)
 */
 
 
+Z:=Integers();   // Used for coersion below 
 
-Z:=Integers();   /* Used for coersion below */
-
-SetColumns(0);  /* Better Printing */
+SetColumns(0);  // Better Printing 
 
 
 
@@ -42,8 +41,7 @@ Inputs: G            group
 Outputs: a group of type GrpPerm in Magma
 
 Based on Magma algorithm here:
-http://magma.maths.usyd.edu.au/magma/handbook/text/705#7874
-
+https://magma.maths.usyd.edu.au/magma/handbook/text/752
 
 ************************************ */
 
@@ -124,7 +122,7 @@ end function;
 
 
 /* ***************************************
-NonGenerationByScottCriterion(tbl, C, sizeconjclass, ordG )
+NonGenerationByScottCriterion(tbl, C, G, Con)
 
 Tests the Nongeneration Criterion of Scott 
     (Section 15.3 in Breuer)
@@ -144,8 +142,7 @@ Used in: WeakTestGeneration
 ************************************ */
 
 NonGenerationByScottCriterion := function( tbl,C,G,Con)
-
-        
+       
 for chi in tbl do
    degree:= chi[1]; 
    dim:= 2 * ( degree - InnerProduct( chi,tbl[1]));  
@@ -187,22 +184,29 @@ Outputs: false if Epi_C(g,G) is empty based on
 Used in RepresentativesEpimorphisms
 ************************************ */
 
-WeakTestGeneration := function( C, g0, G )
+WeakTestGeneration := function( C, g0, G : Con:=[], tbl:=[], sizeconjclass:=[], sizecenter:=0 )
         
-tbl:= CharacterTable( G );    
-size:=#G; 
-Con:=ConjugacyClasses(G);
-numb:=0;
-sizeconjclass:=[];
-        
-for i in [1..#Con] do  
-   if Con[i][2] eq 1 then 
-      numb:=numb+1;
-   end if;
-   Append(~sizeconjclass,Con[i][2]);
-end for;
+
+if #tbl eq 0 then
+   tbl:= CharacterTable( G );
+end if;
+size:=#G;
+if #Con eq 0 then
+   Con:=ConjugacyClasses(G);
+end if;
+
+if #sizeconjclass eq 0  then
+   for i in [1..#Con] do  
+      Append(~sizeconjclass,Con[i][2]);
+   end for;
+end if;
+
+if sizecenter eq 0 then
+  sizecenter:=#Center(G);
+end if;  
+  
        
-if CardinalityOfHom(C, g0, tbl, sizeconjclass,size) lt size/numb  then    
+if CardinalityOfHom(C, g0, tbl, sizeconjclass,size) lt size/sizecenter  then    
    return false; 
 elif g0 eq 0 and NonGenerationByScottCriterion( tbl, C, G, Con ) then 
    return false;
@@ -234,26 +238,27 @@ Used in RepresentativesEpimorphisms
 
 ************************************ */
 
-HardTestGeneration := function( C, g0, G )
+HardTestGeneration := function( C, g0, G : Con:=[] )
 
 r:=#C;
 n:=#( G );
 id:=Identity(G);
  
-
-Con:=ConjugacyClasses(G);
-sigma:=[];   /* list of representatives of conjugacy classes */
+if #Con eq 0 then
+   Con:=ConjugacyClasses(G);
+end if;
+sigma:=[];   // list of representatives of conjugacy classes
 for i in [1..r] do 
    Append(~sigma,Con[C[i]][3]); 
 end for;
  
 
-rep_cen:=[]; /* list of centralizers for each element of sigma */
+rep_cen:=[]; // list of centralizers for each element of sigma
 for s in sigma do 
    Append(~rep_cen,Centralizer(G,s)); 
 end for;
 
-/*Initialize iteration */
+// Initialize iteration 
 if 0 lt  r then
    iter_cen:= [rep_cen[1]];
    R:= [[id]];
@@ -278,13 +283,13 @@ for i in [1..#R] do
    Append(~max,#R[i]);
 end for; 
     
-    /* List of all ones  */
+// List of all ones  
 choice:= [];
 for i in [1..r] do 
    Append(~choice,1);
 end for;
    
-     /* list of sigma[i]^R[i][1]; */
+// list of sigma[i]^R[i][1];
 tuple:=[];
 for i in [1..r] do 
    Append(~tuple, sigma[i]^R[i][1] );
@@ -292,10 +297,8 @@ end for;
   
   
 
-/* function: NextElementTuple */
-     
-NextElementTuple:= function(choice, bleck, iter_cen, R, max)
-      
+// function: NextElementTuple     
+NextElementTuple:= function(choice, bleck, iter_cen, R, max)      
       
   pos:= r;
   while 1 lt pos and choice[pos] eq max[pos] do
@@ -319,9 +322,7 @@ NextElementTuple:= function(choice, bleck, iter_cen, R, max)
        iter_cen[pos]:=iter_cen[pos-1] meet Centralizer(G,sigma[pos]^R[pos][1]);
         pos:= pos + 1;
      end while;
-
    end if;
-
 
    return choice, bleck, iter_cen, R, max;
 end function;
@@ -332,31 +333,22 @@ tup:= tuple;
 genvecs:=[];
       
 while tup ne [id,id] do
-
-      
    prod:= id;
    for i in [1..r] do
       prod:= prod * tup[i];
    end for;
 
-   
-
    if g0 eq 0 then
       if prod eq  id and #sub<G | tup >  eq  n then
-                 
          hypgens:=[];
-       
          for t in tup do 
             Append(~hypgens,t);
          end for;
-
         Append(~genvecs, hypgens);
-         
-          
       end if;
       
-      else
-        ReduceGenerators(~G);  /* removes redundancies */
+   else
+      ReduceGenerators(~G);  // removes redundancies
 
       if   prod  eq  id and NumberOfGenerators(G)  le g0 then
 
@@ -377,10 +369,7 @@ while tup ne [id,id] do
       Append(~genvecs, hypgens);
         
 
-
-
-   elif prod eq id and IsAbelian(G) and NumberOfGenerators(G) le  2*g0 then
-
+      elif prod eq id and IsAbelian(G) and NumberOfGenerators(G) le  2*g0 then
       hypgens:=Generators(G);
       hypgens:=SetToSequence(hypgens);
 
@@ -396,7 +385,7 @@ while tup ne [id,id] do
 
 
           
-   else
+      else
       
       elms:=[];
           
@@ -423,7 +412,7 @@ while tup ne [id,id] do
             commprod:= id;
             for j in [1..g0] do
                commprod:=commprod*(elms[counter[2*j-1]], elms[counter[2*j]]);
-                  /* commutator is (g,h) */
+                   // commutator is (g,h)
             end for;
             
                                                               
@@ -474,12 +463,16 @@ end function;
 
 
 /* ***************************************
-RepresentativesEpimorphisms(signature,G)
+RepresentativesEpimorphisms(signature,G : Con:=[], tbl:=[], orders:=[], sizecon:=[], sizecenter:=0)
  
 
 Input: signature  
        group G
-
+       Con the conjugacy classes of G (optional)
+       tbl the character table of G (optional)
+       orders list of orders of conjugacy classes corresponding to Con (optional)
+       sizecon size of each conjugacy class corresponding to Con (optional)
+       sizecenter size of center (optional)
 
 Output: a list of records containing
            the signature,
@@ -507,34 +500,44 @@ Breuer's notes:
 
 ************************************ */
 
-RepresentativesEpimorphisms := function(signature,G)
+RepresentativesEpimorphisms := function(signature,G : Con:=[], tbl:=[], orders:=[], sizecon:=[], sizecenter:=0 )
 
-g0:= signature[1];      /* orbit genus */
-r:= #signature  - 1;    /* branch points */    
+g0:= signature[1];      // orbit genus 
+r:= #signature  - 1;    // number of  branch points 
 m:= Reverse(Prune(Reverse(signature)));
-        
+
+// If the user enters conjugacy classes or character table,
+// the group must already by a permutation group
+if (#Con ne 0 or #tbl ne 0) and Type(G) ne GrpPerm then
+    error  "If you define a conjugacy class or character table of the group, the group must already be a GrpPerm.";  
+end if;
 
 
-  /* Change G to GrpPerm if of type GrpPC */
+// Change G to GrpPerm if of type GrpPC 
 if Type(G) ne GrpPerm then
   if Type(G) eq GrpPC then
      G:=ConvertToPerm(G);
   else
-     return "Error: Must be a group of type GrpPerm or GrpPC.";
+     error "You must enter a group of type GrpPerm or GrpPC.";
   end if;  
 end if;
 
-          
-ccl:= ConjugacyClasses( G );
-nccl:= #ccl;
-orders:= [];
-    
+
+if #Con eq 0 then
+   Con:= ConjugacyClasses( G );
+end if;
+nccl:= #Con;
 
 
-for conjclass in ccl  do 
-   Append(~orders, conjclass[1] );
-end for;
-     
+// print #orders;
+if #orders eq 0 then
+   for conjclass in Con  do 
+      Append(~orders, conjclass[1] );
+   end for;
+end if;
+//print #orders;
+
+
 images:=[];
 for i in [1..r] do
    temp:=[];
@@ -547,7 +550,7 @@ for i in [1..r] do
 end for;     
   
 if exists(u){x: x in images | #x eq 0} then 
-   return [];        
+   error  "At least one entry in the signature is not a valid order for elements in the designated group.";        
 end if;
   
 epi:= [];    
@@ -569,10 +572,8 @@ end if;
 
 
  
-/* FUNCTION NextClassStructure  */
-    
-if r eq 0 then  /* create function for case where there is no ramification */
-
+// FUNCTION NextClassStructure 
+ if r eq 0 then  // create function for case where there is no ramification 
     NextClassStructure:= function(counter,max)
        if counter ne [-100] then
           counter:= [-100];
@@ -582,7 +583,7 @@ if r eq 0 then  /* create function for case where there is no ramification */
        end if;
     end function;
 
-else      /* function for case where there is ramification */
+else      // function for case where there is ramification 
 
     NextClassStructure:= function(counter,max)
        for i:=r to 1 by -1  do
@@ -610,18 +611,17 @@ else      /* function for case where there is ramification */
           end for;
           return [-100],counter;
       end function;
-
 end if;
     
 C,counter:= NextClassStructure(counter,max);
              
 while C ne [-100] do
-   weak:= WeakTestGeneration( C, g0, G );
+   weak:= WeakTestGeneration( C, g0, G : Con:=Con, tbl:=tbl, sizeconjclass:=sizecon, sizecenter:=sizecenter );
              
    if weak ne false then
             
   
-   test:= HardTestGeneration( C, g0, G);
+   test:= HardTestGeneration( C, g0, G : Con:=Con);
              
           
       if test ne  [[Identity(G), Identity(G)]] then
@@ -636,7 +636,11 @@ while C ne [-100] do
    C,counter:= NextClassStructure(counter,max);
 end while;
 
-return epi;
+if #epi eq 0 then
+ error "This group and signature pair are not valid pairs for a group action on a Riemann surface.";
+else 
+   return epi;
+end if;
 
 end function;
 
@@ -659,7 +663,7 @@ Output: write to file "storefilename" with monodromy data
 AddMonodromy:=procedure(g,BrDataPath,OutputPath)
 
 
-/* Load Data from Breuer */
+// Load Data from Breuer
 if g lt 10 then
         
    filename:=BrDataPath cat "genus" cat "0" cat IntegerToString(g) cat  "/groups" cat "0" cat IntegerToString(g);
@@ -682,7 +686,7 @@ dataline:=Gets(FP);
 count:=1;
 while IsEof(dataline) eq false  do 
 
-/* if starts with "#" or  "R" skip */
+// if starts with "#" or  "R" skip 
 if dataline[1] ne "#" and dataline[1] ne "R" then
 
    i:=1;
@@ -724,14 +728,12 @@ if dataline[1] ne "#" and dataline[1] ne "R" then
       i+:=1;
    end while;	
 
-  /* save sign, gpsize,gpnum; */
-
    gpsize:=StringToInteger(gpsize);
    gpnum:=StringToInteger(gpnum);
    G:=SmallGroup(gpsize,gpnum);
 
 
-   if #sign eq 1 then  /* deal with case of no monodromy separately */
+   if #sign eq 1 then  // deal with case of no monodromy separately
       groupstring:=  "(" cat IntegerToString(gpsize) cat"," cat IntegerToString(gpnum) cat")"; 
 
       PrintFile( storefilename, groupstring);
